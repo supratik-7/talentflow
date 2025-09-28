@@ -1,18 +1,19 @@
-// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { makeServer } from "./mocks/server";
+import { BrowserRouter } from "react-router-dom";
 
-
-if (typeof window !== "undefined") {
+// Start Mirage only in dev
+if (process.env.NODE_ENV === "development") {
   makeServer({ environment: "development" });
-  console.log("✅ MirageJS started in browser");
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>
 );
