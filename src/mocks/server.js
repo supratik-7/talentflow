@@ -1,5 +1,4 @@
 import { createServer, Factory, Model } from "miragejs";
-import db from "../db";
 
 export function makeServer({ environment = "development" } = {}) {
   return createServer({
@@ -95,140 +94,99 @@ export function makeServer({ environment = "development" } = {}) {
       }),
     },
 
-    async seeds(server) {
-      
-      const jobsCount = await db.jobs.count();
-      if (jobsCount === 0) {
-        const jobs = server.createList("job", 10);
-        await db.jobs.bulkPut(jobs.map((j) => j.attrs));
-      }
+    seeds(server) {
+      console.log("🌱 Seeding demo data...");
 
-      
-      const candidatesCount = await db.candidates.count();
-      if (candidatesCount === 0) {
-        const candidates = server.createList("candidate", 50);
-        await db.candidates.bulkPut(candidates.map((c) => c.attrs));
-      }
+      server.createList("job", 10);
+      server.createList("candidate", 50);
 
-      
-      const assessmentsCount = await db.assessments.count();
-      if (assessmentsCount === 0) {
-        server.create("assessment", {
-          id: "a1",
-          jobId: "1",
-          title: "Frontend Basics",
-          sections: [
-            {
-              title: "React",
-              questions: [
-                { text: "What is React?", type: "short", points: 5 },
-                { text: "Explain useState hook.", type: "short", points: 10 },
-              ],
-            },
-          ],
-        });
+      server.create("assessment", {
+        id: "a1",
+        jobId: "1",
+        title: "Frontend Basics",
+        sections: [
+          {
+            title: "React",
+            questions: [
+              { text: "What is React?", type: "short", points: 5 },
+              { text: "Explain useState hook.", type: "short", points: 10 },
+            ],
+          },
+        ],
+      });
 
-        server.create("assessment", {
-          id: "a2",
-          jobId: "1",
-          title: "JavaScript Advanced",
-          sections: [
-            {
-              title: "JavaScript",
-              questions: [
-                { text: "What is a closure?", type: "long", points: 10 },
-                { text: "Explain event loop in JS.", type: "short", points: 10 },
-              ],
-            },
-          ],
-        });
-      }
+      server.create("assessment", {
+        id: "a2",
+        jobId: "1",
+        title: "JavaScript Advanced",
+        sections: [
+          {
+            title: "JavaScript",
+            questions: [
+              { text: "What is a closure?", type: "long", points: 10 },
+              { text: "Explain event loop in JS.", type: "short", points: 10 },
+            ],
+          },
+        ],
+      });
     },
 
     routes() {
       this.namespace = "api";
       this.timing = 400;
 
-      
       this.get("/test", () => {
         return { ok: true, message: "MirageJS is running 🎉" };
       });
 
-      
-      this.get("/jobs", async (schema, req) => {
-        const { search = "", status = "" } = req.queryParams;
-        let jobs = await db.jobs.toArray();
-
-        if (search)
-          jobs = jobs.filter((j) =>
-            j.title.toLowerCase().includes(search.toLowerCase())
-          );
-        if (status) jobs = jobs.filter((j) => j.status === status);
-
-        
-        jobs.sort((a, b) => Number(b.id) - Number(a.id));
-
-        return { data: jobs, total: jobs.length };
-      });
-
-      this.post("/jobs", async (schema, req) => {
+      this.get("/jobs", (schema) => schema.all("job"));
+      this.post("/jobs", (schema, req) => {
         const attrs = JSON.parse(req.requestBody);
-        const job = {
-          ...attrs,
-          id: Date.now().toString(),
-          order: await db.jobs.count(),
-        };
-        await db.jobs.put(job);
-        return job;
+        return schema.create("job", { ...attrs, id: Date.now().toString() });
       });
 
-      this.patch("/jobs/:id", async (schema, req) => {
-        const id = req.params.id;
-        const updates = JSON.parse(req.requestBody);
-        const job = await db.jobs.get(id);
-        const updated = { ...job, ...updates };
-        await db.jobs.put(updated);
-        return updated;
-      });
+      this.get("/candidates", (schema) => schema.all("candidate"));
+      this.get("/candidates/:id", (schema, req) =>
+        schema.find("candidate", req.params.id)
+      );
 
-     
-      this.get("/candidates", async () => await db.candidates.toArray());
-      this.get("/candidates/:id", async (schema, req) => {
-        return await db.candidates.get(req.params.id);
-      });
+      this.get("/assessments/:jobId", (schema, req) =>
+        schema.where("assessment", { jobId: req.params.jobId })
+      );
 
-      
-      this.get("/assessments/:jobId", async (schema, req) => {
-        const jobId = req.params.jobId;
-        return await db.assessments.where("jobId").equals(jobId).toArray();
-      });
-
-      this.put("/assessments/:jobId", async (schema, req) => {
+      this.put("/assessments/:jobId", (schema, req) => {
         const jobId = req.params.jobId;
         const data = JSON.parse(req.requestBody);
-        const assessment = {
+        return schema.create("assessment", {
           id: "a" + Date.now(),
           jobId,
           title: data.title || `Assessment ${Date.now()}`,
           sections: data.sections || [],
-        };
-        await db.assessments.put(assessment);
-        return assessment;
+        });
       });
 
-      this.post("/assessments/:jobId/submit", async (schema, req) => {
+      this.post("/assessments/:jobId/submit", (schema, req) => {
         const { jobId } = req.params;
-        const submission = JSON.parse(req.requestBody);
-        const record = { id: "s" + Date.now(), jobId, ...submission };
-        await db.submissions.put(record);
-        return { success: true };
+        const { candidateName, answers, score, assessmentId } = JSON.parse(
+          req.requestBody
+        );
+        return schema.create("submission", {
+          id: "s" + Date.now(),
+          jobId,
+          assessmentId,
+          candidateName,
+          answers,
+          score,
+        });
       });
 
-      this.get("/assessments/:jobId/review", async (schema, req) => {
+      this.get("/assessments/:jobId/review", (schema, req) => {
         const { jobId } = req.params;
         const { assessmentId } = req.queryParams;
-        let subs = await db.submissions.where("jobId").equals(jobId).toArray();
-        if (assessmentId) subs = subs.filter((s) => s.assessmentId === assessmentId);
+        let subs = schema.where("submission", { jobId }).models;
+        if (assessmentId) {
+          subs = subs.filter((s) => s.assessmentId === assessmentId);
+        }
         return subs;
       });
     },
