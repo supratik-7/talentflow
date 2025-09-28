@@ -96,18 +96,21 @@ export function makeServer({ environment = "development" } = {}) {
     },
 
     async seeds(server) {
+      
       const jobsCount = await db.jobs.count();
       if (jobsCount === 0) {
-        const jobs = server.createList("job", 25);
-        db.jobs.bulkPut(jobs.map((j) => j.attrs));
+        const jobs = server.createList("job", 10);
+        await db.jobs.bulkPut(jobs.map((j) => j.attrs));
       }
 
+      
       const candidatesCount = await db.candidates.count();
       if (candidatesCount === 0) {
-        const candidates = server.createList("candidate", 200);
-        db.candidates.bulkPut(candidates.map((c) => c.attrs));
+        const candidates = server.createList("candidate", 50);
+        await db.candidates.bulkPut(candidates.map((c) => c.attrs));
       }
 
+      
       const assessmentsCount = await db.assessments.count();
       if (assessmentsCount === 0) {
         server.create("assessment", {
@@ -147,6 +150,11 @@ export function makeServer({ environment = "development" } = {}) {
       this.timing = 400;
 
       
+      this.get("/test", () => {
+        return { ok: true, message: "MirageJS is running 🎉" };
+      });
+
+      
       this.get("/jobs", async (schema, req) => {
         const { search = "", status = "" } = req.queryParams;
         let jobs = await db.jobs.toArray();
@@ -161,11 +169,6 @@ export function makeServer({ environment = "development" } = {}) {
         jobs.sort((a, b) => Number(b.id) - Number(a.id));
 
         return { data: jobs, total: jobs.length };
-      });
-
-      this.get("/jobs/:id", async (schema, req) => {
-        const job = await db.jobs.get(req.params.id);
-        return job;
       });
 
       this.post("/jobs", async (schema, req) => {
@@ -183,17 +186,18 @@ export function makeServer({ environment = "development" } = {}) {
         const id = req.params.id;
         const updates = JSON.parse(req.requestBody);
         const job = await db.jobs.get(id);
-        if (!job) return { error: "Job not found" };
         const updated = { ...job, ...updates };
         await db.jobs.put(updated);
         return updated;
       });
 
+     
       this.get("/candidates", async () => await db.candidates.toArray());
       this.get("/candidates/:id", async (schema, req) => {
         return await db.candidates.get(req.params.id);
       });
 
+      
       this.get("/assessments/:jobId", async (schema, req) => {
         const jobId = req.params.jobId;
         return await db.assessments.where("jobId").equals(jobId).toArray();
@@ -224,9 +228,7 @@ export function makeServer({ environment = "development" } = {}) {
         const { jobId } = req.params;
         const { assessmentId } = req.queryParams;
         let subs = await db.submissions.where("jobId").equals(jobId).toArray();
-        if (assessmentId) {
-          subs = subs.filter((s) => s.assessmentId === assessmentId);
-        }
+        if (assessmentId) subs = subs.filter((s) => s.assessmentId === assessmentId);
         return subs;
       });
     },
