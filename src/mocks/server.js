@@ -30,16 +30,16 @@ export function makeServer({ environment = "development" } = {}) {
         },
         description(i) {
           const descriptions = [
-            "Build modern, responsive UIs using React and Tailwind.",
-            "Develop scalable backend APIs with Node.js and Express.",
-            "Work across frontend and backend to deliver full features.",
-            "Analyze datasets and generate insights with SQL and Python.",
-            "Build ML models and deploy them into production systems.",
-            "Maintain CI/CD pipelines, cloud infra, and automation tools.",
-            "Drive product strategy and manage cross-functional teams.",
-            "Design user-friendly interfaces with wireframes and mockups.",
-            "Test applications for bugs and ensure product quality.",
-            "Develop Android/iOS apps with React Native or Flutter.",
+            "Build modern UIs with React and Tailwind.",
+            "Develop scalable backend APIs with Node.js.",
+            "Work across full stack to deliver features.",
+            "Analyze data with SQL and Python.",
+            "Build and deploy ML models.",
+            "Manage CI/CD pipelines and infra.",
+            "Drive product strategy and delivery.",
+            "Design user-friendly UI/UX flows.",
+            "Test apps for bugs and quality.",
+            "Build cross-platform mobile apps.",
           ];
           return descriptions[i % descriptions.length];
         },
@@ -83,11 +83,11 @@ export function makeServer({ environment = "development" } = {}) {
         },
         profile(i) {
           const bios = [
-            "Frontend specialist with React/Next.js experience.",
-            "Backend engineer with Node.js and database expertise.",
-            "Data enthusiast with SQL and visualization skills.",
-            "UI/UX designer with Figma and prototyping background.",
-            "DevOps engineer focusing on CI/CD pipelines.",
+            "Frontend specialist with React.",
+            "Backend engineer with Node.js.",
+            "Data enthusiast with SQL skills.",
+            "UI/UX designer with Figma.",
+            "DevOps engineer with CI/CD.",
           ];
           return bios[i % bios.length];
         },
@@ -96,9 +96,8 @@ export function makeServer({ environment = "development" } = {}) {
 
     seeds(server) {
       console.log("🌱 Seeding demo data...");
-
       server.createList("job", 10);
-      server.createList("candidate", 50);
+      server.createList("candidate", 30);
 
       server.create("assessment", {
         id: "a1",
@@ -124,7 +123,7 @@ export function makeServer({ environment = "development" } = {}) {
             title: "JavaScript",
             questions: [
               { text: "What is a closure?", type: "long", points: 10 },
-              { text: "Explain event loop in JS.", type: "short", points: 10 },
+              { text: "Explain event loop.", type: "short", points: 10 },
             ],
           },
         ],
@@ -139,17 +138,24 @@ export function makeServer({ environment = "development" } = {}) {
         return { ok: true, message: "MirageJS is running 🎉" };
       });
 
+      // Jobs
       this.get("/jobs", (schema) => schema.all("job"));
       this.post("/jobs", (schema, req) => {
         const attrs = JSON.parse(req.requestBody);
-        return schema.create("job", { ...attrs, id: Date.now().toString() });
+        return schema.create("job", {
+          ...attrs,
+          id: Date.now().toString(),
+          status: "active",
+        });
       });
 
+      // Candidates
       this.get("/candidates", (schema) => schema.all("candidate"));
       this.get("/candidates/:id", (schema, req) =>
         schema.find("candidate", req.params.id)
       );
 
+      // Assessments
       this.get("/assessments/:jobId", (schema, req) =>
         schema.where("assessment", { jobId: req.params.jobId })
       );
